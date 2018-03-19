@@ -9,7 +9,6 @@ struct ConfigData {
   char AP_SSID[32];
   char DogChip[32];
   char PhoneNumber[12];
-  char LoginKey[32];
   char STAEnabled[2];
   char STA_SSID[32];
   char STA_PASSWD[32];
@@ -21,26 +20,23 @@ ConfigData Config;
 bool loadConfig() {
   String ConfigFile;
 
-  if(!readlineFromFile("config.dat", ConfigFile) ) {
+  if (!readlineFromFile("config.dat", ConfigFile) ) {
     Serial.println("Error reading config file");
-    return false;    
+    return false;
   }
-  //const size_t capacity = JSON_OBJECT_SIZE(3) + JSON_ARRAY_SIZE(2) + 60;
   const size_t capacity = CFG_BUFSIZE;
 
   StaticJsonBuffer<capacity> jsonBuffer;
-  
+
   JsonObject &root = jsonBuffer.parseObject(ConfigFile);
 
-  strlcpy(Config.AP_SSID, root["AP_SSID"], sizeof(Config.AP_SSID)); 
-  strlcpy(Config.DogChip, root["DogChip"], sizeof(Config.DogChip));   
-  strlcpy(Config.PhoneNumber, root["PhoneNumber"], sizeof(Config.PhoneNumber));   
-  strlcpy(Config.LoginKey, root["LoginKey"], sizeof(Config.LoginKey)); 
-  strlcpy(Config.STAEnabled, root["STAEnabled"], sizeof(Config.STAEnabled));   
-  strlcpy(Config.STA_SSID, root["STA_SSID"], sizeof(Config.STA_SSID));   
-  strlcpy(Config.STA_PASSWD, root["STA_PASSWD"], sizeof(Config.STA_PASSWD)); 
-  strlcpy(Config.OtaURL, root["OtaURL"], sizeof(Config.OtaURL)); 
-  
+  strlcpy(Config.AP_SSID, root["AP_SSID"], sizeof(Config.AP_SSID));
+  strlcpy(Config.DogChip, root["DogChip"], sizeof(Config.DogChip));
+  strlcpy(Config.PhoneNumber, root["PhoneNumber"], sizeof(Config.PhoneNumber));
+  strlcpy(Config.STA_SSID, root["STA_SSID"], sizeof(Config.STA_SSID));
+  strlcpy(Config.STA_PASSWD, root["STA_PASSWD"], sizeof(Config.STA_PASSWD));
+  strlcpy(Config.OtaURL, root["OtaURL"], sizeof(Config.OtaURL));
+
   return true;
 }
 
@@ -49,14 +45,11 @@ bool saveConfig() {
 
   const size_t capacity = CFG_BUFSIZE;
   StaticJsonBuffer<capacity> jsonBuffer;
-  
   JsonObject &root = jsonBuffer.createObject();
 
   root["AP_SSID"] = Config.AP_SSID;
   root["DogChip"] = Config.DogChip;
   root["PhoneNumber"] = Config.PhoneNumber;
-  root["LoginKey"] = Config.LoginKey;
-  root["STAEnabled"] = Config.STAEnabled;
   root["STA_SSID"] = Config.STA_SSID;
   root["STA_PASSWD"] = Config.STA_PASSWD;
   root["OtaURL"] = Config.OtaURL;

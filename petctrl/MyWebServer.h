@@ -8,14 +8,12 @@ ESP8266WebServer server(80);
 #include "main_html.h"
 #include "MyFS.h"
 
-
 void loadMainPage() {
   String MAIN_public_page_tmp = MAIN_public_page;
-  
+
   MAIN_public_page_tmp.replace("*ap ssid*", Config.AP_SSID);
   MAIN_public_page_tmp.replace("*cfg telefono*", Config.PhoneNumber);
   MAIN_public_page_tmp.replace("*cfg chip*", Config.DogChip);
-  //server.send_P ( 200, "text/html", MAIN_public_page);
   server.send( 200, "text/html", MAIN_public_page_tmp);
 
 }
@@ -29,18 +27,9 @@ void loadSettingsPage() {
   SettingsPageHTML_tmp.replace("*pet name*", Config.AP_SSID);
   SettingsPageHTML_tmp.replace("*pet chip*", Config.DogChip);
   SettingsPageHTML_tmp.replace("*telefono*", Config.PhoneNumber);
-  SettingsPageHTML_tmp.replace("*LoginKey*", Config.LoginKey);
-
-  if (String(Config.STAEnabled) == "1") {
-    SettingsPageHTML_tmp.replace("*sta state*", "checked");
-    SettingsPageHTML_tmp.replace("*APEnable value*", "1");
-  } else {
-    SettingsPageHTML_tmp.replace("*sta state*", "");
-    SettingsPageHTML_tmp.replace("*APEnable value*", "0");
-  }
   //SettingsPageHTML.replace("*OtaURL*", Config.OtaURL);
   server.send ( 200, "text/html", SettingsPageHTML_tmp);
-  
+
 }
 
 String getContentType(String filename) {
@@ -73,6 +62,14 @@ void handleFileDelete() {
   path = String();
 }
 
+void printServerArgs() {
+  String args_data = "Server args:\n\n";
+
+  for (uint8_t i = 0; i < server.args(); i++) {
+    args_data += " NAME:" + server.argName(i) + "\n VALUE:" + server.arg(i) + "\n";
+  }
+  Serial.println(args_data);
+}
 
 void handleFileCreate() {
   if (server.args() == 0)
@@ -91,7 +88,6 @@ void handleFileCreate() {
   server.send(200, "text/plain", "");
   path = String();
 }
-
 
 bool handleFileRead(String path) {
   Serial.println("handleFileRead: " + path);
@@ -137,8 +133,6 @@ void handleFileList() {
   server.send(200, "text/json", output);
 }
 
-
-
 void handleFileUpload() { // upload a new file to the SPIFFS
   Serial.println("handlefileupload called");
   HTTPUpload& upload = server.upload();
@@ -165,11 +159,14 @@ void handleFileUpload() { // upload a new file to the SPIFFS
 
 void handlePhotoUpload() {
   Serial.println("handlephotoupload called");
+
   HTTPUpload& upload = server.upload();
+
+  Serial.println("Upload status: " + upload.status);
   if (upload.status == UPLOAD_FILE_START) {
     String filename = "foto.jpg";
     if (!filename.startsWith("/")) filename = "/" + filename;
-    Serial.print("handleFileUpload Name: "); Serial.println(filename);
+    Serial.print("handlePhotoUpload Name: "); Serial.println(filename);
     fsUploadFile = SPIFFS.open(filename, "w");            // Open the file for writing in SPIFFS (create if it doesn't exist)
     filename = String();
   } else if (upload.status == UPLOAD_FILE_WRITE) {
@@ -178,11 +175,12 @@ void handlePhotoUpload() {
   } else if (upload.status == UPLOAD_FILE_END) {
     if (fsUploadFile) {                                   // If the file was successfully created
       fsUploadFile.close();                               // Close the file again
-      Serial.print("handleFileUpload Size: "); Serial.println(upload.totalSize);
-      server.sendHeader("Location", "/sucess");     // Redirect the client to the success page
-      server.send(303);
+      Serial.println("handlePhotoUpload Size: "); Serial.println(upload.totalSize);
+      server.send(200);
+      //server.sendHeader("Location", "/sucess");     // Redirect the client to the success page
+      //server.send(303);
     } else {
-      server.send(500, "text/plain", "500: couldn't create file");
+      server.send(500, "text/plain", "500: couldn't create file ->" + upload.status);
     }
   }
 }
@@ -212,7 +210,6 @@ bool loadFromSpiffs(String path) {
   return true;
 }
 
-
 void handleWebRequests() {
   if (loadFromSpiffs(server.uri())) return;
   String message = "File Not Detected\n\n";
@@ -228,15 +225,6 @@ void handleWebRequests() {
   }
   server.send(404, "text/plain", message);
   Serial.println(message);
-}
-
-void printServerArgs() {
-  String args_data = "Server args:\n\n";
-  
-  for (uint8_t i = 0; i < server.args(); i++) {
-    args_data += " NAME:" + server.argName(i) + "\n VALUE:" + server.arg(i) + "\n";
-  }
-  Serial.println(args_data);
 }
 
 void handleNotFound() {
@@ -258,6 +246,19 @@ void handleNotFound() {
 }
 
 
+String getInstrumentsState() {
+  String response_string;
+  response_string = "\"lights\":\"";
+  response_string += digitalRead(LIGHT_PIN);
+  response_string += "\",";
+  response_string += "\"sound\":\"";
+  response_string += digitalRead(SOUND_PIN);
+  response_string += "\",";
+  response_string += "\"vibration\":\"";
+  response_string += digitalRead(VIBRATION_PIN);
+  response_string += "\"";
+  return response_string;
+}
 
 void SetupMyWebServ() {
   //SERVER.ON
@@ -268,6 +269,53 @@ void SetupMyWebServ() {
     Serial.println(server.arg(0));
     loadMainPage();
   } );
+
+  server.on ( "/associate", HTTP_POST, []() {
+
+    String json_fail = "{\"status\":\"fail\"}";
+    String json_success = "{\"status\":\"success\"}";
+
+    Serial.println("Associating");
+
+    //    const size_t capacity = CFG_BUFSIZE JSON_OBJECT_SIZE(8) + 256;
+    //  StaticJsonBuffer<capacity> jsonBuffer;
+    printServerArgs();
+    String ap_name = server.arg("ap_name");
+    String admin_password = server.arg("admin_password");
+    ap_name.trim();
+    admin_password.trim();
+    if (ap_name.length() > 3 && admin_password.length() > 6) {
+      //strcpy(Config.STA_SSID, ap_name.c_str());
+      //strcpy(Config.STA_PASSWD, admin_password.c_str());
+      //saveConfig();
+      server.send(200, "application/json", json_success);
+    } else {
+      server.send(200, "application/json", json_fail);
+    }
+
+  });
+
+  server.on ( "/client_info", HTTP_POST, []() {
+    printServerArgs();
+    if (server.arg("admin_password") == Config.STA_PASSWD) {
+      String json = "{\"status\":\"ok\",";
+      json += "\"name\":\"" + String(Config.AP_SSID) + "\"";
+      json += ",";
+      json += "\"chipid\":\"" + String(Config.DogChip) + "\"";
+      json += ",";
+      json += "\"phone\":\"" + String(Config.PhoneNumber) + "\"";
+      json += ",";
+      json += "\"RSSI\":\"";
+      json += WiFi.RSSI();
+      json += "\"";
+      json += ",";
+      json += getInstrumentsState();
+      json += "}";
+      server.send(200, "aplication/json", json);
+    } else {
+      server.send(200, "aplication/json", "{\"status\":\"fail\",\"msg\":\"Incorrect password\"}");
+    }
+  });
   /*
     server.onNotFound ( [](){
     handleNotFound();
@@ -287,48 +335,75 @@ void SetupMyWebServ() {
 
   } );
 
+  server.on("/settings_android", HTTP_POST, []() {
+    String json_fail = "{\"status\":\"fail\"}";
+    String json_success = "{\"status\":\"success\"}";
+    bool SomethingChange = false;
+    Serial.println("Save settings android");
+
+    printServerArgs();
+    String petName  = server.arg("petName");
+    String petChip  = server.arg("petChip");
+    String telefono = server.arg("telefono");
+    petName.trim();
+    petChip.trim();
+    telefono.trim();
+
+    if (String(Config.AP_SSID) != petName) {
+      strcpy(Config.AP_SSID, petName.c_str());
+      SomethingChange = true;
+    }
+    if (String(Config.DogChip) != petChip) {
+      strcpy(Config.DogChip, petChip.c_str());
+      SomethingChange = true;
+    }
+    if (String(Config.PhoneNumber) != telefono) {
+      strcpy(Config.PhoneNumber, telefono.c_str());
+      SomethingChange = true;
+    }
+
+    if (SomethingChange) {
+      Serial.println("Something change saving...");
+      saveConfig();
+      server.send(200, "application/json", json_success);
+    } else {
+      Serial.println("Nothing change, do nothing...");
+      server.send(200, "application/json", json_fail);
+    }
+
+  });
+
   server.on("/settings", HTTP_POST, []() {
     //Serial.print("Server args: ");
     //Serial.print(server.argName(0) + ":");
     printServerArgs();
-    
-    if ( server.arg("restart") == "Reiniciar") {
+
+    if ( (server.arg("restart") == "Reiniciar") || (server.arg("restart") == "1") ) {
+      server.send(200, "aplication/json", "{\"status\":\"success\"}");
+      delay(2000);
       ESP.restart();
+    }
+    if ( server.arg("turnoff") == "1") {
+      //TODO: SHUTDOWN
     }
     if ( server.arg("save") == "Guardar" )
     {
-/*
-  char AP_SSID[32];
-  char DogChip[32];
-  char PhoneNumber[12];
-  char LoginKey[32];
-  char STAEnabled[2];
-  char STA_SSID[32];
-  char STA_PASSWD[32];
-  char OtaURL[64];
-  */      
+
       bool SomethingChange = false;
-      
+
       String staName = server.arg("APName");
       String staPass = server.arg("APPasswd");
       String petName  = server.arg("petName");
       String petChip  = server.arg("petChip");
       String telefono = server.arg("telefono");
-      String LoginKey = server.arg("LoginKey");
-      String APEnable = server.arg("APEnable");
       String otaUrl   = server.arg("OtaURL");
       staName.trim();
       staPass.trim();
       petName.trim();
       petChip.trim();
       telefono.trim();
-      LoginKey.trim();
-      APEnable.trim();
       otaUrl.trim();
-      if (APEnable == String("")) {
-        APEnable = "0";
-      }
-      
+
       if (String(Config.AP_SSID) != petName) {
         strcpy(Config.AP_SSID, petName.c_str());
         SomethingChange = true;
@@ -341,14 +416,6 @@ void SetupMyWebServ() {
         strcpy(Config.PhoneNumber, telefono.c_str());
         SomethingChange = true;
       }
-      if (String(Config.LoginKey) != LoginKey ) {
-        strcpy(Config.LoginKey, LoginKey.c_str());
-        SomethingChange = true;
-      }
-      if (String(Config.STAEnabled) != APEnable ) {
-        strcpy(Config.STAEnabled, APEnable.c_str());
-        SomethingChange = true;
-      }
       if (String(Config.STA_SSID) !=  staName) {
         strcpy(Config.STA_SSID, staName.c_str());
         SomethingChange = true;
@@ -359,29 +426,63 @@ void SetupMyWebServ() {
       }
       if ( (String(Config.OtaURL) != otaUrl ) && (otaUrl != String("")) ) {
         strcpy(Config.OtaURL, otaUrl.c_str());
-        SomethingChange = true;       
+        SomethingChange = true;
       }
-      
-      
 
-
-      if(SomethingChange) {
+      if (SomethingChange) {
         Serial.println("Something change saving...");
         saveConfig();
       } else {
         Serial.println("Nothing change, do nothing...");
-        Serial.print("->" + String( Config.STAEnabled));
-        Serial.println("->" + APEnable);
       }
       loadSettingsPage();
     }
   });
 
+  server.on("/gpio_toggle", HTTP_POST, []() {
+    String response;
+    String msg;
+    if (server.arg("toggle") == "lights") {
+      digitalWrite(LIGHT_PIN, !digitalRead(LIGHT_PIN));
+      msg = "\"lights toggle\"";
+    }
+    if (server.arg("toggle") == "sound") {
+      digitalWrite(SOUND_PIN, !digitalRead(SOUND_PIN));
+      msg = "\"sound toggle\"";
+    }
+    if (server.arg("toggle") == "vibration") {
+      digitalWrite(VIBRATION_PIN, !digitalRead(VIBRATION_PIN));
+      msg = "\"vibration toggle\"";
+    }
+
+    response = "{\"status\":\"success\",";
+    response += "\"msg\":";
+    response += msg;
+    response += ",";
+    response += getInstrumentsState();
+    response += "}";
+
+    server.send(200, "aplication/json", response);
+  });
+
+  server.on("/gpio_state", HTTP_POST, []() {
+
+    String response_string;
+
+    response_string = "{\"status\":\"success\"";
+    response_string += ",";
+    response_string += getInstrumentsState();
+    response_string += "}";
+
+    server.send(200, "aplication/json", response_string );
+
+  });
 
   server.on("/photoupload", HTTP_POST, []() {
-    server.send(200, "text/plain", "");
+    //server.send(200, "text/plain", "");
+    server.send(200);
   }, handlePhotoUpload
-  );
+           );
 
   //list directory
   server.on("/list", HTTP_GET, handleFileList);
@@ -399,25 +500,11 @@ void SetupMyWebServ() {
       server.send(404, "text/plain", "FileNotFound");
   });
 
-  //get heap status, analog input value and all GPIO statuses in one json call
-  /*  
-    server.on("/all", HTTP_GET, [](){
-    String json = "{";
-    json += "\"heap\":"+String(ESP.getFreeHeap());
-    json += ", \"analog\":"+String(analogRead(A0));
-    json += ", \"gpio\":"+String((uint32_t)(((GPI | GPO) & 0xFFFF) | ((GP16I & 0x01) << 16)));
-    json += "}";
-    server.send(200, "text/json", json);
-    json = String();
-    });
-  */
-
   //END SERVER_ON
 
   server.begin();
   Serial.println("HTTP server started");
 
 }
-
 
 #endif

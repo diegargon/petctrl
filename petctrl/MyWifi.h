@@ -3,9 +3,8 @@
 #define MYWIFI_H
 
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h> 
+#include <WiFiClient.h>
 #include "MyFS.h"
-
 
 //FUNCTIONS
 void StationConn(void);
@@ -13,36 +12,37 @@ void SetupMyAP(void);
 
 String ssid;
 
-String AP_STATION_SSID; 
-String AP_STATION_PASSWD; 
+String AP_STATION_SSID;
+String AP_STATION_PASSWD;
 
 IPAddress myIP;
+IPAddress local_IP(192, 168, 4, 22);
+IPAddress gateway(192, 168, 4, 1);
+IPAddress subnet(255, 255, 255, 0);
 
-IPAddress local_IP(192,168,4,22);
-IPAddress gateway(192,168,4,1);
-IPAddress subnet(255,255,255,0);
+bool needStaReconnect() {
+  //if (WIFI_STA_conn != WL_CONNECTED) {
+  if (WiFi.localIP().toString() == "0.0.0.0") { //WORKAROUND
+    return true;
+  }
+  return false;
+}
 
 void StationConn() {
 
   //CLIENT MODE
-  AP_STATION_SSID = Config.STA_SSID; 
-  AP_STATION_PASSWD = Config.STA_PASSWD; 
-  WiFi.begin(AP_STATION_SSID.c_str(),AP_STATION_PASSWD.c_str());
-  Serial.print(AP_STATION_SSID.c_str()); 
+  AP_STATION_SSID = Config.STA_SSID;
+  AP_STATION_PASSWD = Config.STA_PASSWD;
+  WiFi.setAutoReconnect(false);
+  WiFi.begin(AP_STATION_SSID.c_str(), AP_STATION_PASSWD.c_str());
+  Serial.print(AP_STATION_SSID.c_str());
   delay(2000);
-  Serial.println("Connection to... ");
-  //if(WIFI_STA_conn != WL_CONNECTED ) {
-  if (WiFi.localIP().toString() == "0.0.0.0") { //WORKAROUD    
-    Serial.print("AP Failed! -");
-  } else {
-    Serial.print("AP Succesful -");
+  if (!needStaReconnect()) {
+    Serial.print("Local IP: ");
+    Serial.print(WiFi.localIP());
+    Serial.print(" RSSI: ");
+    Serial.println(WiFi.RSSI());
   }
-  
-  Serial.print("Local IP: ");
-  Serial.print(WiFi.localIP());
-  Serial.print(" RSSI: ");
-  Serial.println(WiFi.RSSI());
-
 }
 
 void SetupMyAP() {
@@ -62,16 +62,5 @@ void SetupMyAP() {
   }
 }
 
-
-bool needStaReconnect() {
-  //if (WIFI_STA_conn != WL_CONNECTED) {  
-  if (WiFi.localIP().toString() == "0.0.0.0") { //WORKAROUND   
-    Serial.println("I say not connected... trying again");
-    StationConn();
-    return true;  
-  }
-  return false;  
-}
-  
 
 #endif
