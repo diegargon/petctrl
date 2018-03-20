@@ -1,11 +1,9 @@
 
 #ifndef H_MAIN_HTML
 #define H_MAIN_HTML
-
 #include <Arduino.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
-
 
 //const char MAIN_public_page[] PROGMEM = R"=====(
 String MAIN_public_page = R"=====(
@@ -35,9 +33,7 @@ p { line-height:0; }
 </html>
 )=====";
 
-
 void handleNotFound();
-
 
 String SettingsPageHTML =  R"=====(
 <!DOCTYPE html>
@@ -55,7 +51,7 @@ p { line-height:0; }
 <p><a href="/">->Inicio</a></p>
 <center>
 <p>Foto:</p>
-<p><<img width="256px"  src=foto.jpg /> </p>
+<p><img width="256px"  src="foto.jpg" /> </p>
 <br>
 <form action="photoupload" method="post" enctype="multipart/form-data">
     <input type="file" name="name">

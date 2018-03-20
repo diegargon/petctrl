@@ -1,2 +1,2 @@
-{"AP_SSID":"Odi","DogChip":"3424254234","PhoneNumber":"3222335","LoginKey":"32423352","STAEnabled":"1","STA_SSID":"PetControl","STA_PASSWD":"esto-es-una-clave-larga","OtaURL":"http://envigo.net/1/ota.bin"}
+{"AP_SSID":"Odi","DogChip":"3424254234","PhoneNumber":"3222335","LoginKey":"32423352","STAEnabled":"1","STA_SSID":"PetControl","STA_PASSWD":"esto-es-una-clave-larga","OtaURL":"https://envigo.net/1/petctrl.bin"}
 

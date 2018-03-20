@@ -35,7 +35,8 @@ void StationConn() {
   AP_STATION_PASSWD = Config.STA_PASSWD;
   WiFi.setAutoReconnect(false);
   WiFi.begin(AP_STATION_SSID.c_str(), AP_STATION_PASSWD.c_str());
-  Serial.print(AP_STATION_SSID.c_str());
+  Serial.print("AP_SSID ");
+  Serial.println(AP_STATION_SSID.c_str());
   delay(2000);
   if (!needStaReconnect()) {
     Serial.print("Local IP: ");
@@ -61,6 +62,5 @@ void SetupMyAP() {
     StationConn();
   }
 }
-
 
 #endif

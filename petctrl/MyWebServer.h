@@ -4,7 +4,6 @@
 
 #include <ESP8266WebServer.h>
 ESP8266WebServer server(80);
-//#include <ESP8266httpUpdate.h>
 #include "main_html.h"
 #include "MyFS.h"
 
@@ -245,7 +244,6 @@ void handleNotFound() {
   Serial.println ("NotFound");
 }
 
-
 String getInstrumentsState() {
   String response_string;
   response_string = "\"lights\":\"";
@@ -296,7 +294,7 @@ void SetupMyWebServ() {
   });
 
   server.on ( "/client_info", HTTP_POST, []() {
-    printServerArgs();
+    //printServerArgs();
     if (server.arg("admin_password") == Config.STA_PASSWD) {
       String json = "{\"status\":\"ok\",";
       json += "\"name\":\"" + String(Config.AP_SSID) + "\"";
@@ -374,8 +372,6 @@ void SetupMyWebServ() {
   });
 
   server.on("/settings", HTTP_POST, []() {
-    //Serial.print("Server args: ");
-    //Serial.print(server.argName(0) + ":");
     printServerArgs();
 
     if ( (server.arg("restart") == "Reiniciar") || (server.arg("restart") == "1") ) {

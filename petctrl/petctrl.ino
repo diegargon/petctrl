@@ -5,13 +5,14 @@
 
 #include "MyFS.h"
 #include "config.h"
+#include "ota.h"
 #include "MyWifi.h"
 #include "MyWebServer.h"
 #include "main_html.h"
 
 int reconnectDelay = 3000;
 unsigned long lastMillis;
- 
+
 void setup() {
 
   Serial.begin(115200);
@@ -28,13 +29,16 @@ void setup() {
   digitalWrite(SOUND_PIN, LOW);
   digitalWrite(VIBRATION_PIN, LOW);
 
+  Serial.println("Version " + String(FW_VERSION));
+
   setupFS();
   if (loadConfig() ) {
     SetupMyAP();
     SetupMyWebServ();
-   StationConn();    
+    StationConn();
+    delay(1000);
+     checkForUpdates();    
   }
-
 }
 
 void loop() {
@@ -44,14 +48,16 @@ void loop() {
 
   if (needStaReconnect()) {
     unsigned long nextCheck = lastMillis + reconnectDelay;
-    if (millis() >  nextCheck) {    
+    if (millis() >  nextCheck) {
       Serial.print("Trying StationConn...");
       lastMillis = millis();
       if (reconnectDelay < 15000) reconnectDelay += 1000;
-       Serial.println(reconnectDelay);
-      StationConn();      
+      Serial.println(reconnectDelay);
+      StationConn();
     }
   } else if (reconnectDelay > 3000) {
+    delay(1000);
+    checkForUpdates();
     Serial.println("Connected: Reset reconnect to 5000");
     reconnectDelay = 3000;
   }

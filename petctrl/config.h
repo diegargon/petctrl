@@ -58,5 +58,4 @@ bool saveConfig() {
   savelineToFile("config.dat", ConfigFile);
 }
 
-
 #endif
